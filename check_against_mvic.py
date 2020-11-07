@@ -103,7 +103,7 @@ async def check_person(session, dataframe, idx, proxy):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Check voter registration against Michigan Voter Information Center')
     parser.add_argument('--proxy', help='set http proxy')
-    parser.add_argument('--connections', help='limit the number of concurrent connections', type=int, default=4)
+    parser.add_argument('--connections', help='limit the number of concurrent connections', type=int, default=40)
     args = parser.parse_args()
 
     df = load_raw_data()
