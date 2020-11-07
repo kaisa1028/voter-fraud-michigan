@@ -66,6 +66,10 @@ async def post_data(session, first, last, year, month, zip_code, proxy):
                 'TransistionVoter': 'false'
             }, proxy=proxy) as res:
                 return await res.text()
+        except asyncio.TimeoutError as e:
+            print(f'{first} {last} timeout')
+            if retry_count >= 10:
+                raise e
         except ServerDisconnectedError as e:
             if retry_count >= 10:
                 raise e
