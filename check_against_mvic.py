@@ -49,7 +49,7 @@ def absentee_ballot_info(html: str):
 
 async def post_data(session, first, last, year, month, zip_code, proxy):
     retry_count = 0
-    while True:
+    while retry_count <= 10:
         try:
             retry_count = retry_count + 1
             async with session.post('https://mvic.sos.state.mi.us/Voter/SearchByName', data={
@@ -73,6 +73,7 @@ async def post_data(session, first, last, year, month, zip_code, proxy):
         except ServerConnectionError as e:
             if retry_count >= 10:
                 raise e
+    return ''
 
 
 async def check_person(session, dataframe, idx, proxy):
