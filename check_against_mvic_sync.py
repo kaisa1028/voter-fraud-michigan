@@ -95,7 +95,7 @@ if __name__ == '__main__':
     count_registered = 0
     count_voted = 0
 
-    for idx, row in df.iterrows():
+    for idx, row in df[args.skip:].iterrows():
         month, registered, absentee, info = check_person(row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
                                                          row['ZIP_CODE'])
         df.loc[idx, 'BIRTH_MONTH'] = str(month)
