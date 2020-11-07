@@ -157,4 +157,9 @@ if __name__ == '__main__':
             df_voted.to_csv('./data/voted.csv', index=False)
 
 
-    asyncio.run(do())
+    try:
+        asyncio.run(do())
+    except KeyboardInterrupt:
+        df.to_csv(outfile, index=False)
+        dataframe_voted = df.loc[df['ABSENTEE']]
+        dataframe_voted.to_csv('./data/voted.csv', index=False)
