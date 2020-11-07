@@ -1,11 +1,11 @@
 # voter-fraud-michigan
-####/data/detroit_index.txt
+`/data/detroit_index.txt`
 Phocaean Dionysius's original list of old/dead voters
 
-####/data/detroit_index_checked.csv
+`/data/detroit_index_checked.csv`
 Checked against Michigan Voter Information Center website. Added BIRTH_MONTH column so people can check voter registration information without guessing the birth month
 
-####/data/voted.csv
+`/data/voted.csv`
 Filtered list of people whose absentee ballots were received.
 
 ## Verifying the lists
