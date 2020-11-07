@@ -106,12 +106,6 @@ if __name__ == '__main__':
     df = load_raw_data()
 
 
-    def save_csv():
-        df.to_csv('./data/detroit_index_checked.csv', index=False)
-        df_voted = df.loc[df['ABSENTEE']]
-        df_voted.to_csv('./data/detroit_index_voted.csv', index=False)
-
-
     async def do():
         count_total = len(df.index)
         count_checked = 0
@@ -140,7 +134,7 @@ if __name__ == '__main__':
                     print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Registered: ',
                           count_registered, ' / ', 'Voted: ', count_voted)
                     if count_checked % 50 == 0:
-                        save_csv()
+                        df.to_csv('./data/detroit_index_checked.csv', index=False)
         except asyncio.TimeoutError:
             pass
         except ServerDisconnectedError:
@@ -148,7 +142,9 @@ if __name__ == '__main__':
         except ServerConnectionError:
             print('Error connecting to server')
         finally:
-            save_csv()
+            df.to_csv('./data/detroit_index_checked.csv', index=False)
+            df_voted = df.loc[df['ABSENTEE']]
+            df_voted.to_csv('./data/detroit_index_voted.csv', index=False)
 
 
     asyncio.run(do())
