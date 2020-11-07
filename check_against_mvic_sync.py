@@ -1,9 +1,17 @@
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 import pandas
 from bs4 import BeautifulSoup
 import argparse
 
 VERBOSE = False
+
+retry_strategy = Retry(total=5)
+adapter = HTTPAdapter(max_retries=Retry)
+http_client = requests.Session()
+http_client.mount('https://', adapter)
+http_client.mount('http://', adapter)
 
 
 def load_raw_data(filename) -> pandas.DataFrame:
@@ -47,7 +55,7 @@ def absentee_ballot_info(html: str):
 
 
 def post_data(first_name, last_name, birth_year, birth_month, zip_code):
-    res = requests.post('https://mvic.sos.state.mi.us/Voter/SearchByName', data={
+    res = http_client.post('https://mvic.sos.state.mi.us/Voter/SearchByName', data={
         'FirstName': first_name,
         'LastName': last_name,
         'NameBirthMonth': str(birth_month),
@@ -60,7 +68,7 @@ def post_data(first_name, last_name, birth_year, birth_month, zip_code):
         'Months': '',
         'VoterNotFound': 'false',
         'TransistionVoter': 'false'
-    })
+    }, timeout=5)
     return res.text
 
 
@@ -100,7 +108,7 @@ if __name__ == '__main__':
     df = load_raw_data(args.input or './data/detroit_index.txt')
     out_file = args.output or './data/detroit_index_checked.txt'
     VERBOSE = args.verbose
-    
+
     if 'BIRTH_MONTH' not in df.columns:
         df['BIRTH_MONTH'] = int(0)
     if 'REGISTERED' not in df.columns:
