@@ -93,7 +93,7 @@ if __name__ == '__main__':
     parser.add_argument('--proxy', help='set http proxy')
     parser.add_argument('--input', help='input file')
     parser.add_argument('--output', help='output file')
-    parser.add_argument('--skip', help='skip first x records', type=int, default=0)
+    parser.add_argument('--skip', help='skip records that are already checked', type=bool, default=True)
     parser.add_argument('--verbose', help='display more info', type=bool, default=False)
     args = parser.parse_args()
 
@@ -107,26 +107,27 @@ if __name__ == '__main__':
     count_voted = 0
 
     for idx, row in df[args.skip:].iterrows():
-        month, registered, absentee, info = check_person(row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
-                                                         row['ZIP_CODE'])
-        df.loc[idx, 'BIRTH_MONTH'] = str(month)
-        df.loc[idx, 'REGISTERED'] = registered
-        df.loc[idx, 'ABSENTEE'] = absentee
-        df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''
-        df.loc[idx, 'APPLICATION_RECEIVED'] = info['Application received'] if info is not None else ''
-        df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
-        df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
+        if row['BIRTH_MONTH'] <= 0:
+            month, registered, absentee, info = check_person(row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
+                                                             row['ZIP_CODE'])
+            df.loc[idx, 'BIRTH_MONTH'] = str(month)
+            df.loc[idx, 'REGISTERED'] = registered
+            df.loc[idx, 'ABSENTEE'] = absentee
+            df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''
+            df.loc[idx, 'APPLICATION_RECEIVED'] = info['Application received'] if info is not None else ''
+            df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
+            df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
 
-        count_checked = count_checked + 1
-        if registered:
-            count_registered = count_registered + 1
-        if absentee:
-            count_voted = count_voted + 1
-        print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Registered: ',
-              count_registered, ' / ', 'Voted: ', count_voted)
+            count_checked = count_checked + 1
+            if registered:
+                count_registered = count_registered + 1
+            if absentee:
+                count_voted = count_voted + 1
+            print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Registered: ',
+                  count_registered, ' / ', 'Voted: ', count_voted)
 
-        if count_checked % 50 == 0:
-            df.to_csv(out_file, index=False)
+            if count_checked % 50 == 0:
+                df.to_csv(out_file, index=False)
 
     df_voted = df.loc[df['ABSENTEE']]
     df_voted.to_csv('./data/voted.csv', index=False)
