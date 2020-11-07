@@ -122,21 +122,24 @@ if __name__ == '__main__':
                     connector=aiohttp.TCPConnector(ssl=False, limit=args.connections)) as session:
                 tasks = [asyncio.create_task(check_person(session, df, idx, args.proxy)) for idx in df.index]
                 for co in asyncio.as_completed(tasks):
-                    idx, month, registered, absentee, info = await co
+                    try:
+                        idx, month, registered, absentee, info = await co
 
-                    df.loc[idx, 'BIRTH_MONTH'] = str(month)
-                    df.loc[idx, 'REGISTERED'] = registered
-                    df.loc[idx, 'ABSENTEE'] = absentee
-                    df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''
-                    df.loc[idx, 'APPLICATION_RECEIVED'] = info['Application received'] if info is not None else ''
-                    df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
-                    df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
+                        df.loc[idx, 'BIRTH_MONTH'] = str(month)
+                        df.loc[idx, 'REGISTERED'] = registered
+                        df.loc[idx, 'ABSENTEE'] = absentee
+                        df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''
+                        df.loc[idx, 'APPLICATION_RECEIVED'] = info['Application received'] if info is not None else ''
+                        df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
+                        df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
 
-                    count_checked = count_checked + 1
-                    if registered:
-                        count_registered = count_registered + 1
-                    if absentee:
-                        count_voted = count_voted + 1
+                        count_checked = count_checked + 1
+                        if registered:
+                            count_registered = count_registered + 1
+                        if absentee:
+                            count_voted = count_voted + 1
+                    except asyncio.TimeoutError:
+                        pass
                     print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Registered: ',
                           count_registered, ' / ', 'Voted: ', count_voted)
                     if count_checked % 10 == 0:
