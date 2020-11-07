@@ -120,7 +120,7 @@ if __name__ == '__main__':
     count_checked = 0
     count_voted = 0
 
-    for idx, row in df[args.skip:].iterrows():
+    for idx, row in df.iterrows():
         if row['BIRTH_MONTH'] <= 0:
             month, registered, absentee, info = check_person(row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
                                                              row['ZIP_CODE'])
