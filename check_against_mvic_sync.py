@@ -82,7 +82,7 @@ def check_person(first, last, year, zip_code):
     has_requested_absentee_ballot = False
     voting_info = None
     for i in range(1, 13):
-        took = 0
+        took = 0.0
         if VERBOSE:
             start_time = time.time()
             html = post_data(first, last, year, i, zip_code)
@@ -94,13 +94,13 @@ def check_person(first, last, year, zip_code):
             has_registered_to_vote = True
             birth_month = i
             if VERBOSE:
-                print(f'Birth month of {first} {last} is {birth_month} ({took} seconds)')
+                print(f'Birth month of {first} {last} is {birth_month} ({"%.2f" % took} seconds)')
             if has_absentee_ballot(html):
                 has_requested_absentee_ballot = True
                 voting_info = absentee_ballot_info(html)
             return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
         elif VERBOSE:
-            print(f'Birth month of {first} {last} is not {i} ({took} seconds)')
+            print(f'Birth month of {first} {last} is not {i} ({"%.2f" % took} seconds)')
     return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
 
 
