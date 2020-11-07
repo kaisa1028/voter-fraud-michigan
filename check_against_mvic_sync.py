@@ -8,7 +8,7 @@ import argparse
 VERBOSE = False
 
 retry_strategy = Retry(total=5, read=5, connect=5, backoff_factor=0.3, method_whitelist=frozenset(['GET', 'POST']))
-adapter = HTTPAdapter(max_retries=Retry)
+adapter = HTTPAdapter(max_retries=retry_strategy)
 http_client = requests.Session()
 http_client.mount('https://', adapter)
 http_client.mount('http://', adapter)
