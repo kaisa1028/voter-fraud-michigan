@@ -7,7 +7,7 @@ import argparse
 
 VERBOSE = False
 
-retry_strategy = Retry(total=5)
+retry_strategy = Retry(total=5, read=5, connect=5, backoff_factor=0.3)
 adapter = HTTPAdapter(max_retries=Retry)
 http_client = requests.Session()
 http_client.mount('https://', adapter)
