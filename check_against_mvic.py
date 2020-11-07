@@ -139,7 +139,7 @@ if __name__ == '__main__':
                         count_voted = count_voted + 1
                     print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Registered: ',
                           count_registered, ' / ', 'Voted: ', count_voted)
-                    if count_checked % 10 == 0:
+                    if count_checked % 50 == 0:
                         save_csv()
         except asyncio.TimeoutError:
             pass
