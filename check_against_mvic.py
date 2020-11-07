@@ -4,13 +4,10 @@ from requests.packages.urllib3.util.retry import Retry
 import pandas
 from bs4 import BeautifulSoup
 import argparse
-import time
 import concurrent.futures
 import threading
 
 thread_local = threading.local()
-
-VERBOSE = False
 
 
 def get_req_session():
@@ -85,33 +82,19 @@ def post_data(first_name, last_name, birth_year, birth_month, zip_code):
 
 
 def check_person(first, last, year, zip_code):
-    if VERBOSE:
-        print(f'Checking {first} {last}')
-        print(f'Trying to find birth month')
     birth_month = 0
     has_registered_to_vote = False
     has_requested_absentee_ballot = False
     voting_info = None
     for i in range(1, 13):
-        took = 0.0
-        if VERBOSE:
-            start_time = time.time()
-            html = post_data(first, last, year, i, zip_code)
-            end_time = time.time()
-            took = end_time - start_time
-        else:
-            html = post_data(first, last, year, i, zip_code)
+        html = post_data(first, last, year, i, zip_code)
         if is_registered(html):
             has_registered_to_vote = True
             birth_month = i
-            if VERBOSE:
-                print(f'Birth month of {first} {last} is {birth_month} ({"%.2f" % took} seconds)')
             if has_absentee_ballot(html):
                 has_requested_absentee_ballot = True
                 voting_info = absentee_ballot_info(html)
             return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
-        elif VERBOSE:
-            print(f'Birth month of {first} {last} is not {i} ({"%.2f" % took} seconds)')
     return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
 
 
@@ -121,13 +104,11 @@ if __name__ == '__main__':
     parser.add_argument('--input', help='input file')
     parser.add_argument('--output', help='output file')
     parser.add_argument('--skip', help='skip records that are already checked', type=bool, default=True)
-    parser.add_argument('--verbose', help='display more info', type=bool, default=False)
     parser.add_argument('--workers', help='number of workers', type=int, default=5)
     args = parser.parse_args()
 
     df = load_raw_data(args.input or './data/detroit_index.txt')
     out_file = args.output or './data/detroit_index_checked.txt'
-    VERBOSE = args.verbose
 
     if 'BIRTH_MONTH' not in df.columns:
         df['BIRTH_MONTH'] = int(0)
