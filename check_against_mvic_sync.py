@@ -7,7 +7,7 @@ import argparse
 
 VERBOSE = False
 
-retry_strategy = Retry(total=5, read=5, connect=5, backoff_factor=0.3, method_whitelist=frozenset(['GET', 'POST']))
+retry_strategy = Retry(total=10, read=10, connect=10, backoff_factor=0.3, method_whitelist=frozenset(['GET', 'POST']))
 adapter = HTTPAdapter(max_retries=retry_strategy)
 http_client = requests.Session()
 http_client.mount('https://', adapter)
@@ -68,7 +68,7 @@ def post_data(first_name, last_name, birth_year, birth_month, zip_code):
         'Months': '',
         'VoterNotFound': 'false',
         'TransistionVoter': 'false'
-    }, timeout=5)
+    }, timeout=2)
     return res.text
 
 
@@ -123,7 +123,8 @@ if __name__ == '__main__':
     try:
         for idx, row in df.iterrows():
             if row['BIRTH_MONTH'] <= 0:
-                month, registered, absentee, info = check_person(row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
+                month, registered, absentee, info = check_person(row['FIRST_NAME'], row['LAST_NAME'],
+                                                                 row['YEAR_OF_BIRTH'],
                                                                  row['ZIP_CODE'])
                 df.loc[idx, 'BIRTH_MONTH'] = int(month)
                 df.loc[idx, 'REGISTERED'] = registered
@@ -140,7 +141,7 @@ if __name__ == '__main__':
                 if count_checked % 5 == 0:
                     df.to_csv(out_file, index=False)
     except KeyboardInterrupt:
-        df.to_csv(out_file,index=False)
+        df.to_csv(out_file, index=False)
     finally:
         df_voted = df.loc[df['ABSENTEE']]
         df_voted.to_csv('./data/voted.csv', index=False)
