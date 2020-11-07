@@ -136,7 +136,7 @@ if __name__ == '__main__':
             count_voted = len(df.loc[df['ABSENTEE']])
             print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Voted: ', count_voted)
 
-            if count_checked % 50 == 0:
+            if count_checked % 5 == 0:
                 df.to_csv(out_file, index=False)
 
     df_voted = df.loc[df['ABSENTEE']]
