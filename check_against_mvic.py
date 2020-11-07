@@ -1,13 +1,32 @@
+import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 import pandas
-import aiohttp
-from aiohttp.client_exceptions import ServerConnectionError, ServerDisconnectedError
-import asyncio
-import argparse
 from bs4 import BeautifulSoup
+import argparse
+import time
+import concurrent.futures
+import threading
+
+thread_local = threading.local()
+
+VERBOSE = False
+
+
+def get_req_session():
+    if not hasattr(thread_local, 'session'):
+        retry_strategy = Retry(total=10, read=10, connect=10, backoff_factor=0.3,
+                               method_whitelist=frozenset(['GET', 'POST']))
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session = requests.Session()
+        session.mount('https://', adapter)
+        session.mount('http://', adapter)
+        thread_local.session = session
+    return thread_local.session
 
 
 def load_raw_data(filename) -> pandas.DataFrame:
-    """Load raw data"""
+    """Load raw data from Phocaean Dionysius's list"""
     return pandas.read_csv(filename)
 
 
@@ -32,88 +51,83 @@ def absentee_ballot_info(html: str):
     soup = BeautifulSoup(html, 'lxml')
     x = soup.find(id='lblAbsenteeVoterInformation')
     text = [txt for txt in x.stripped_strings]
-    info = {}
+    voting_info = {}
     for field in ['Election date', 'Application received', 'Ballot sent', 'Ballot received']:
         try:
-            idx = text.index(field)
-            info[field] = text[idx + 1]
+            i = text.index(field)
+            voting_info[field] = text[i + 1]
         except ValueError:
-            info = None
+            voting_info = None
             break
         except IndexError:
-            info = None
+            voting_info = None
             break
-    return info
+    return voting_info
 
 
-async def post_data(session, first, last, year, month, zip_code, proxy):
-    retry_count = 0
-    while retry_count <= 10:
-        try:
-            retry_count = retry_count + 1
-            async with session.post('https://mvic.sos.state.mi.us/Voter/SearchByName', data={
-                'FirstName': first,
-                'LastName': last,
-                'NameBirthMonth': str(month),
-                'NameBirthYear': str(year),
-                'ZipCode': str(zip_code),
-                'Dln': '',
-                'DlnBirthMonth': '0',
-                'DlnBirthYear': '',
-                'DpaID': '0',
-                'Months': '',
-                'VoterNotFound': 'false',
-                'TransistionVoter': 'false'
-            }, proxy=proxy) as res:
-                return await res.text()
-        except asyncio.TimeoutError as e:
-            print(f'{first} {last} timeout')
-            if retry_count >= 10:
-                raise e
-        except ServerDisconnectedError as e:
-            if retry_count >= 10:
-                raise e
-        except ServerConnectionError as e:
-            if retry_count >= 10:
-                raise e
-    return ''
+def post_data(first_name, last_name, birth_year, birth_month, zip_code):
+    session = get_req_session()
+    res = session.post('https://mvic.sos.state.mi.us/Voter/SearchByName', data={
+        'FirstName': first_name,
+        'LastName': last_name,
+        'NameBirthMonth': str(birth_month),
+        'NameBirthYear': str(birth_year),
+        'ZipCode': str(zip_code),
+        'Dln': '',
+        'DlnBirthMonth': '0',
+        'DlnBirthYear': '',
+        'DpaID': '0',
+        'Months': '',
+        'VoterNotFound': 'false',
+        'TransistionVoter': 'false'
+    }, timeout=5)
+    return res.text
 
 
-async def check_person(session, dataframe, idx, proxy):
-    month = 0
-    registered = False
-    absentee = False
-    info = None
-    row = dataframe.loc[idx]
-    # raw data don't have birth month, I have to guess the birth month
+def check_person(first, last, year, zip_code):
+    if VERBOSE:
+        print(f'Checking {first} {last}')
+        print(f'Trying to find birth month')
+    birth_month = 0
+    has_registered_to_vote = False
+    has_requested_absentee_ballot = False
+    voting_info = None
     for i in range(1, 13):
-        try:
-            html = await post_data(session, row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'], i,
-                                   row['ZIP_CODE'],
-                                   proxy)
-            if is_registered(html):
-                registered = True
-                month = i
-                if has_absentee_ballot(html):
-                    absentee = True
-                    info = absentee_ballot_info(html)
-                return idx, month, registered, absentee, info
-        except asyncio.TimeoutError:
-            pass
-    return idx, month, registered, absentee, info
+        took = 0.0
+        if VERBOSE:
+            start_time = time.time()
+            html = post_data(first, last, year, i, zip_code)
+            end_time = time.time()
+            took = end_time - start_time
+        else:
+            html = post_data(first, last, year, i, zip_code)
+        if is_registered(html):
+            has_registered_to_vote = True
+            birth_month = i
+            if VERBOSE:
+                print(f'Birth month of {first} {last} is {birth_month} ({"%.2f" % took} seconds)')
+            if has_absentee_ballot(html):
+                has_requested_absentee_ballot = True
+                voting_info = absentee_ballot_info(html)
+            return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
+        elif VERBOSE:
+            print(f'Birth month of {first} {last} is not {i} ({"%.2f" % took} seconds)')
+    return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Check voter registration against Michigan Voter Information Center')
     parser.add_argument('--proxy', help='set http proxy')
-    parser.add_argument('--connections', help='limit the number of concurrent connections', type=int, default=40)
-    parser.add_argument('--skip', type=bool, default=True, help='skip records that are already checked')
     parser.add_argument('--input', help='input file')
     parser.add_argument('--output', help='output file')
+    parser.add_argument('--skip', help='skip records that are already checked', type=bool, default=True)
+    parser.add_argument('--verbose', help='display more info', type=bool, default=False)
+    parser.add_argument('--workers', help='number of workers', type=int, default=5)
     args = parser.parse_args()
 
     df = load_raw_data(args.input or './data/detroit_index.txt')
-    outfile = args.output or './data/detroit_index_checked.csv'
+    out_file = args.output or './data/detroit_index_checked.txt'
+    VERBOSE = args.verbose
 
     if 'BIRTH_MONTH' not in df.columns:
         df['BIRTH_MONTH'] = int(0)
@@ -122,50 +136,38 @@ if __name__ == '__main__':
     if 'ABSENTEE' not in df.columns:
         df['ABSENTEE'] = False
 
-
-    async def do():
-        count_total = len(df.index)
-        try:
-            async with aiohttp.ClientSession(
-                    connector=aiohttp.TCPConnector(ssl=False, limit=args.connections),
-                    timeout=aiohttp.ClientTimeout(total=10)) as session:
-                if not args.skip:
-                    tasks = [asyncio.create_task(check_person(session, df, idx, args.proxy)) for idx in df.index]
-                else:
-                    tasks = [asyncio.create_task(check_person(session, df, idx, args.proxy)) for idx in
-                             df.loc[df['BIRTH_MONTH'] <= 0].index]
-                for co in asyncio.as_completed(tasks):
-                    idx, month, registered, absentee, info = await co
-
-                    df.loc[idx, 'BIRTH_MONTH'] = int(month)
-                    df.loc[idx, 'REGISTERED'] = registered
-                    df.loc[idx, 'ABSENTEE'] = absentee
-                    df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''
-                    df.loc[idx, 'APPLICATION_RECEIVED'] = info['Application received'] if info is not None else ''
-                    df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
-                    df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
-
-                    count_checked = len(df.loc[df['BIRTH_MONTH'] > 0])
-                    count_voted = len(df.loc[df['ABSENTEE']])
-                    print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Voted: ', count_voted)
-                    if count_checked % 50 == 0:
-                        df.to_csv(outfile, index=False)
-        except asyncio.TimeoutError:
-            pass
-        except ServerDisconnectedError:
-            print('Server disconnected')
-        except ServerConnectionError:
-            print('Error connecting to server')
-        finally:
-            df.to_csv(outfile, index=False)
-            df_voted = df.loc[df['ABSENTEE']]
-            df_voted.to_csv('./data/voted.csv', index=False)
-
+    count_total = len(df.index)
+    count_checked = 0
+    count_voted = 0
 
     try:
-        asyncio.run(do())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
+            if args.skip:
+                futures = {executor.submit(check_person, row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
+                                           row['ZIP_CODE']): idx for idx, row in
+                           df.loc[df['BIRTH_MONTH'] <= 0].iterrows()}
+            else:
+                futures = {executor.submit(check_person, row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
+                                           row['ZIP_CODE']): idx for idx, row in df.iterrows()}
+            for future in concurrent.futures.as_completed(futures):
+                idx = futures[future]
+                month, registered, absentee, info = future.result()
+                df.loc[idx, 'BIRTH_MONTH'] = int(month)
+                df.loc[idx, 'REGISTERED'] = registered
+                df.loc[idx, 'ABSENTEE'] = absentee
+                df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''
+                df.loc[idx, 'APPLICATION_RECEIVED'] = info['Application received'] if info is not None else ''
+                df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
+                df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
+
+                count_checked = len(df.loc[df['BIRTH_MONTH'] > 0])
+                count_voted = len(df.loc[df['ABSENTEE']])
+                print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Voted: ', count_voted)
+
+                if count_checked % 5 == 0:
+                    df.to_csv(out_file, index=False)
     except KeyboardInterrupt:
-        print('Exiting...')
-        df.to_csv(outfile, index=False)
-        dataframe_voted = df.loc[df['ABSENTEE']]
-        dataframe_voted.to_csv('./data/voted.csv', index=False)
+        df.to_csv(out_file, index=False)
+    finally:
+        df_voted = df.loc[df['ABSENTEE']]
+        df_voted.to_csv('./data/voted.csv', index=False)
