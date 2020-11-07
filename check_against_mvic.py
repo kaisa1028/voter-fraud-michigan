@@ -115,7 +115,6 @@ if __name__ == '__main__':
     async def do():
         count_total = len(df.index)
         count_checked = 0
-        count_registered = 0
         count_voted = 0
         try:
             async with aiohttp.ClientSession(
@@ -136,15 +135,11 @@ if __name__ == '__main__':
                     df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
                     df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
 
-                    count_checked = count_checked + 1
-                    if registered:
-                        count_registered = count_registered + 1
-                    if absentee:
-                        count_voted = count_voted + 1
-                    print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Registered: ',
-                          count_registered, ' / ', 'Voted: ', count_voted)
+                    count_checked = len(df.loc[df['BIRTH_MONTH'] > 0])
+                    count_voted = len(df.loc[df['ABSENTEE']])
+                    print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Voted: ', count_voted)
                     if count_checked % 50 == 0:
-                        df.to_csv('./data/detroit_index_checked.csv', index=False)
+                        df.to_csv(outfile, index=False)
         except asyncio.TimeoutError:
             pass
         except ServerDisconnectedError:
@@ -152,9 +147,9 @@ if __name__ == '__main__':
         except ServerConnectionError:
             print('Error connecting to server')
         finally:
-            df.to_csv('./data/detroit_index_checked.csv', index=False)
+            df.to_csv(outfile, index=False)
             df_voted = df.loc[df['ABSENTEE']]
-            df_voted.to_csv('./data/detroit_index_voted.csv', index=False)
+            df_voted.to_csv('./data/voted.csv', index=False)
 
 
     asyncio.run(do())

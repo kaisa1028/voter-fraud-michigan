@@ -103,7 +103,6 @@ if __name__ == '__main__':
 
     count_total = len(df.index)
     count_checked = 0
-    count_registered = 0
     count_voted = 0
 
     for idx, row in df[args.skip:].iterrows():
@@ -118,13 +117,9 @@ if __name__ == '__main__':
             df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
             df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
 
-            count_checked = count_checked + 1
-            if registered:
-                count_registered = count_registered + 1
-            if absentee:
-                count_voted = count_voted + 1
-            print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Registered: ',
-                  count_registered, ' / ', 'Voted: ', count_voted)
+            count_checked = len(df.loc[df['BIRTH_MONTH'] > 0])
+            count_voted = len(df.loc[df['ABSENTEE']])
+            print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Voted: ', count_voted)
 
             if count_checked % 50 == 0:
                 df.to_csv(out_file, index=False)
