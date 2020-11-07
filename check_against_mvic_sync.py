@@ -120,24 +120,27 @@ if __name__ == '__main__':
     count_checked = 0
     count_voted = 0
 
-    for idx, row in df.iterrows():
-        if row['BIRTH_MONTH'] <= 0:
-            month, registered, absentee, info = check_person(row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
-                                                             row['ZIP_CODE'])
-            df.loc[idx, 'BIRTH_MONTH'] = int(month)
-            df.loc[idx, 'REGISTERED'] = registered
-            df.loc[idx, 'ABSENTEE'] = absentee
-            df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''
-            df.loc[idx, 'APPLICATION_RECEIVED'] = info['Application received'] if info is not None else ''
-            df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
-            df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
+    try:
+        for idx, row in df.iterrows():
+            if row['BIRTH_MONTH'] <= 0:
+                month, registered, absentee, info = check_person(row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
+                                                                 row['ZIP_CODE'])
+                df.loc[idx, 'BIRTH_MONTH'] = int(month)
+                df.loc[idx, 'REGISTERED'] = registered
+                df.loc[idx, 'ABSENTEE'] = absentee
+                df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''
+                df.loc[idx, 'APPLICATION_RECEIVED'] = info['Application received'] if info is not None else ''
+                df.loc[idx, 'BALLOT_SENT'] = info['Ballot sent'] if info is not None else ''
+                df.loc[idx, 'BALLOT_RECEIVED'] = info['Ballot received'] if info is not None else ''
 
-            count_checked = len(df.loc[df['BIRTH_MONTH'] > 0])
-            count_voted = len(df.loc[df['ABSENTEE']])
-            print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Voted: ', count_voted)
+                count_checked = len(df.loc[df['BIRTH_MONTH'] > 0])
+                count_voted = len(df.loc[df['ABSENTEE']])
+                print('Total: ', count_total, ' / ', 'Checked: ', count_checked, ' / ', 'Voted: ', count_voted)
 
-            if count_checked % 5 == 0:
-                df.to_csv(out_file, index=False)
-
-    df_voted = df.loc[df['ABSENTEE']]
-    df_voted.to_csv('./data/voted.csv', index=False)
+                if count_checked % 5 == 0:
+                    df.to_csv(out_file, index=False)
+    except KeyboardInterrupt:
+        df.to_csv(out_file,index=False)
+    finally:
+        df_voted = df.loc[df['ABSENTEE']]
+        df_voted.to_csv('./data/voted.csv', index=False)
