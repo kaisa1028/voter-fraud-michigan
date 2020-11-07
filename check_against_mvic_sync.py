@@ -3,6 +3,8 @@ import pandas
 from bs4 import BeautifulSoup
 import argparse
 
+VERBOSE = False
+
 
 def load_raw_data(filename) -> pandas.DataFrame:
     """Load raw data from Phocaean Dionysius's list"""
@@ -63,6 +65,9 @@ def post_data(first_name, last_name, birth_year, birth_month, zip_code):
 
 
 def check_person(first, last, year, zip_code):
+    if VERBOSE:
+        print(f'Checking {first} {last}')
+        print(f'Trying to find birth month')
     birth_month = 0
     has_registered_to_vote = False
     has_requested_absentee_ballot = False
@@ -72,10 +77,14 @@ def check_person(first, last, year, zip_code):
         if is_registered(html):
             has_registered_to_vote = True
             birth_month = i
+            if VERBOSE:
+                print(f'Birth month of {first} {last} is {birth_month}')
             if has_absentee_ballot(html):
                 has_requested_absentee_ballot = True
                 voting_info = absentee_ballot_info(html)
             return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
+        elif VERBOSE:
+            print(f'Birth month of {first} {last} is not {i}')
     return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
 
 
@@ -85,10 +94,12 @@ if __name__ == '__main__':
     parser.add_argument('--input', help='input file')
     parser.add_argument('--output', help='output file')
     parser.add_argument('--skip', help='skip first x records', type=int, default=0)
+    parser.add_argument('--verbose', help='display more info', type=bool, default=False)
     args = parser.parse_args()
 
     df = load_raw_data(args.input or './data/detroit_index.txt')
     out_file = args.output or './data/detroit_index_checked.txt'
+    VERBOSE = args.verbose
 
     count_total = len(df.index)
     count_checked = 0
