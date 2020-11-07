@@ -103,7 +103,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     df = load_raw_data()
-    df = df[:20]
 
 
     async def do():
