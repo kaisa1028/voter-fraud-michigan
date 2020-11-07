@@ -68,7 +68,7 @@ def post_data(first_name, last_name, birth_year, birth_month, zip_code):
         'Months': '',
         'VoterNotFound': 'false',
         'TransistionVoter': 'false'
-    }, timeout=2)
+    }, timeout=5)
     return res.text
 
 
