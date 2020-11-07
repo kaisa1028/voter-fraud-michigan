@@ -100,6 +100,13 @@ if __name__ == '__main__':
     df = load_raw_data(args.input or './data/detroit_index.txt')
     out_file = args.output or './data/detroit_index_checked.txt'
     VERBOSE = args.verbose
+    
+    if 'BIRTH_MONTH' not in df.columns:
+        df['BIRTH_MONTH'] = int(0)
+    if 'REGISTERED' not in df.columns:
+        df['REGISTERED'] = False
+    if 'ABSENTEE' not in df.columns:
+        df['ABSENTEE'] = False
 
     count_total = len(df.index)
     count_checked = 0
@@ -109,7 +116,7 @@ if __name__ == '__main__':
         if row['BIRTH_MONTH'] <= 0:
             month, registered, absentee, info = check_person(row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'],
                                                              row['ZIP_CODE'])
-            df.loc[idx, 'BIRTH_MONTH'] = str(month)
+            df.loc[idx, 'BIRTH_MONTH'] = int(month)
             df.loc[idx, 'REGISTERED'] = registered
             df.loc[idx, 'ABSENTEE'] = absentee
             df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''

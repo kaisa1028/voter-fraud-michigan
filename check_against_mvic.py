@@ -111,11 +111,16 @@ if __name__ == '__main__':
     df = load_raw_data(args.input or './data/detroit_index.txt')
     outfile = args.output or './data/detroit_index_checked.csv'
 
+    if 'BIRTH_MONTH' not in df.columns:
+        df['BIRTH_MONTH'] = int(0)
+    if 'REGISTERED' not in df.columns:
+        df['REGISTERED'] = False
+    if 'ABSENTEE' not in df.columns:
+        df['ABSENTEE'] = False
+
 
     async def do():
         count_total = len(df.index)
-        count_checked = 0
-        count_voted = 0
         try:
             async with aiohttp.ClientSession(
                     connector=aiohttp.TCPConnector(ssl=False, limit=args.connections)) as session:
@@ -127,7 +132,7 @@ if __name__ == '__main__':
                 for co in asyncio.as_completed(tasks):
                     idx, month, registered, absentee, info = await co
 
-                    df.loc[idx, 'BIRTH_MONTH'] = str(month)
+                    df.loc[idx, 'BIRTH_MONTH'] = int(month)
                     df.loc[idx, 'REGISTERED'] = registered
                     df.loc[idx, 'ABSENTEE'] = absentee
                     df.loc[idx, 'ELECTION_DATE'] = info['Election date'] if info is not None else ''
