@@ -123,7 +123,8 @@ if __name__ == '__main__':
         count_total = len(df.index)
         try:
             async with aiohttp.ClientSession(
-                    connector=aiohttp.TCPConnector(ssl=False, limit=args.connections)) as session:
+                    connector=aiohttp.TCPConnector(ssl=False, limit=args.connections),
+                    timeout=aiohttp.ClientTimeout(total=10)) as session:
                 if not args.skip:
                     tasks = [asyncio.create_task(check_person(session, df, idx, args.proxy)) for idx in df.index]
                 else:
