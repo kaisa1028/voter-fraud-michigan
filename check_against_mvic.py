@@ -128,7 +128,7 @@ if __name__ == '__main__':
                     tasks = [asyncio.create_task(check_person(session, df, idx, args.proxy)) for idx in df.index]
                 else:
                     tasks = [asyncio.create_task(check_person(session, df, idx, args.proxy)) for idx in
-                             df.loc[df['BIRTH_MONTH'] > 0].index]
+                             df.loc[df['BIRTH_MONTH'] <= 0].index]
                 for co in asyncio.as_completed(tasks):
                     idx, month, registered, absentee, info = await co
 
