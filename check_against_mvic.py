@@ -84,16 +84,19 @@ async def check_person(session, dataframe, idx, proxy):
     row = dataframe.loc[idx]
     # raw data don't have birth month, I have to guess the birth month
     for i in range(1, 13):
-        html = await post_data(session, row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'], i,
-                               row['ZIP_CODE'],
-                               proxy)
-        if is_registered(html):
-            registered = True
-            month = i
-            if has_absentee_ballot(html):
-                absentee = True
-                info = absentee_ballot_info(html)
-            return idx, month, registered, absentee, info
+        try:
+            html = await post_data(session, row['FIRST_NAME'], row['LAST_NAME'], row['YEAR_OF_BIRTH'], i,
+                                   row['ZIP_CODE'],
+                                   proxy)
+            if is_registered(html):
+                registered = True
+                month = i
+                if has_absentee_ballot(html):
+                    absentee = True
+                    info = absentee_ballot_info(html)
+                return idx, month, registered, absentee, info
+        except asyncio.TimeoutError:
+            pass
     return idx, month, registered, absentee, info
 
 
