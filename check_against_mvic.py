@@ -1,5 +1,4 @@
 import pandas
-import pathlib
 import aiohttp
 from aiohttp.client_exceptions import ServerConnectionError, ServerDisconnectedError
 import asyncio
@@ -7,9 +6,9 @@ import argparse
 from bs4 import BeautifulSoup
 
 
-def load_raw_data() -> pandas.DataFrame:
-    """Load raw data from Phocaean Dionysius's list"""
-    return pandas.read_csv(pathlib.Path(__file__).parent.joinpath('./data/detroit_index.txt').absolute())
+def load_raw_data(filename) -> pandas.DataFrame:
+    """Load raw data"""
+    return pandas.read_csv(filename)
 
 
 def is_registered(html: str):
@@ -104,9 +103,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Check voter registration against Michigan Voter Information Center')
     parser.add_argument('--proxy', help='set http proxy')
     parser.add_argument('--connections', help='limit the number of concurrent connections', type=int, default=40)
+    parser.add_argument('--skip', type=bool, default=True, help='skip records that are already checked')
+    parser.add_argument('--input', help='input file')
+    parser.add_argument('--output', help='output file')
     args = parser.parse_args()
 
-    df = load_raw_data()
+    df = load_raw_data(args.input or './data/detroit_index.txt')
+    outfile = args.output or './data/detroit_index_checked.csv'
 
 
     async def do():
@@ -117,7 +120,11 @@ if __name__ == '__main__':
         try:
             async with aiohttp.ClientSession(
                     connector=aiohttp.TCPConnector(ssl=False, limit=args.connections)) as session:
-                tasks = [asyncio.create_task(check_person(session, df, idx, args.proxy)) for idx in df.index]
+                if not args.skip:
+                    tasks = [asyncio.create_task(check_person(session, df, idx, args.proxy)) for idx in df.index]
+                else:
+                    tasks = [asyncio.create_task(check_person(session, df, idx, args.proxy)) for idx in
+                             df.loc[df['BIRTH_MONTH'] > 0]]
                 for co in asyncio.as_completed(tasks):
                     idx, month, registered, absentee, info = await co
 
