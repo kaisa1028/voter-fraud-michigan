@@ -4,6 +4,7 @@ from requests.packages.urllib3.util.retry import Retry
 import pandas
 from bs4 import BeautifulSoup
 import argparse
+import time
 
 VERBOSE = False
 
@@ -81,18 +82,25 @@ def check_person(first, last, year, zip_code):
     has_requested_absentee_ballot = False
     voting_info = None
     for i in range(1, 13):
-        html = post_data(first, last, year, i, zip_code)
+        took = 0
+        if VERBOSE:
+            start_time = time.time()
+            html = post_data(first, last, year, i, zip_code)
+            end_time = time.time()
+            took = end_time - start_time
+        else:
+            html = post_data(first, last, year, i, zip_code)
         if is_registered(html):
             has_registered_to_vote = True
             birth_month = i
             if VERBOSE:
-                print(f'Birth month of {first} {last} is {birth_month}')
+                print(f'Birth month of {first} {last} is {birth_month} ({took} seconds)')
             if has_absentee_ballot(html):
                 has_requested_absentee_ballot = True
                 voting_info = absentee_ballot_info(html)
             return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
         elif VERBOSE:
-            print(f'Birth month of {first} {last} is not {i}')
+            print(f'Birth month of {first} {last} is not {i} ({took} seconds)')
     return birth_month, has_registered_to_vote, has_requested_absentee_ballot, voting_info
 
 
